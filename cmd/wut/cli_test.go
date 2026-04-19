@@ -196,7 +196,10 @@ func TestKeywordsAddFirstWordAndListRoundTrip(t *testing.T) {
 		t.Errorf("list missing added keyword:\n%s", out)
 	}
 	// Persisted in the correct section of the TOML file.
-	raw, _ := os.ReadFile(filepath.Join(dir, "wut", "config.toml"))
+	raw, err := os.ReadFile(filepath.Join(dir, "wut", "config.toml"))
+	if err != nil {
+		t.Fatalf("read config.toml: %v", err)
+	}
 	got := string(raw)
 	if !strings.Contains(got, "extra_interrogatives") || !strings.Contains(got, "deploy") {
 		t.Errorf("config.toml missing extra_interrogatives=deploy:\n%s", got)
@@ -208,7 +211,10 @@ func TestKeywordsAddAnywhereWritesStopwords(t *testing.T) {
 	if _, err := runCLI(t, "keywords", "add", "pls", "--anywhere"); err != nil {
 		t.Fatalf("keywords add: %v", err)
 	}
-	raw, _ := os.ReadFile(filepath.Join(dir, "wut", "config.toml"))
+	raw, err := os.ReadFile(filepath.Join(dir, "wut", "config.toml"))
+	if err != nil {
+		t.Fatalf("read config.toml: %v", err)
+	}
 	got := string(raw)
 	if !strings.Contains(got, "extra_stopwords") || !strings.Contains(got, "pls") {
 		t.Errorf("config.toml missing extra_stopwords=pls:\n%s", got)

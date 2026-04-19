@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -190,6 +191,9 @@ func pickPlacement() (string, error) {
 	}
 	idx, err := ui.Select("? Where should this keyword trigger routing?", opts, 0)
 	if err != nil {
+		if errors.Is(err, ui.ErrNotTTY) {
+			return "", fmt.Errorf("no TTY for interactive picker — rerun with --first-word or --anywhere")
+		}
 		return "", err
 	}
 	switch idx {
