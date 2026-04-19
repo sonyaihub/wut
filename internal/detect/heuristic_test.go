@@ -2,6 +2,34 @@ package detect
 
 import "testing"
 
+func TestClassifyContractionsRoute(t *testing.T) {
+	// "whats going on" → 3 tokens, "whats" is an interrogative (apostrophe-dropped)
+	// and len>=6 is still false → only 1 signal, still PassThrough.
+	// "whats going on here now bro" → still 1 signal (interrogative) + len>=6 = 2.
+	if got := Classify("whats going on here now bro"); got != Route {
+		t.Fatalf("expected Route for contraction-interrogative long line, got %v", got)
+	}
+	// "hows the weather today" → stopword "the" + interrogative "hows" = 2.
+	if got := Classify("hows the weather today"); got != Route {
+		t.Fatalf("expected Route for 'hows the weather today', got %v", got)
+	}
+}
+
+func TestClassifyExtraSets(t *testing.T) {
+	// Without config — "yo bruh sup" has 0 signals → PassThrough.
+	if got := Classify("yo bruh sup"); got != PassThrough {
+		t.Fatalf("unconfigured slang should passthrough, got %v", got)
+	}
+	// With extras registered, "yo" is an interrogative and "bruh" is a stopword → 2 signals.
+	opts := Options{
+		ExtraStopwords:      []string{"bruh"},
+		ExtraInterrogatives: []string{"yo"},
+	}
+	if got := Classify("yo bruh sup", opts); got != Route {
+		t.Fatalf("configured slang should route, got %v", got)
+	}
+}
+
 func TestParsePassthroughTokens(t *testing.T) {
 	opts := Options{Passthrough: []string{"howto", "make"}}
 	// Would normally route (interrogative "make" + stopwords), but config

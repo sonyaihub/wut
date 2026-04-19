@@ -24,7 +24,11 @@ func NewDetectCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res := detect.Parse(line, detect.Options{Passthrough: cfg.Behavior.Passthrough})
+			res := detect.Parse(line, detect.Options{
+				Passthrough:         cfg.Behavior.Passthrough,
+				ExtraStopwords:      cfg.Detection.ExtraStopwords,
+				ExtraInterrogatives: cfg.Detection.ExtraInterrogatives,
+			})
 			if res.Class != detect.Route {
 				// Exit 127 to signal the shell hook that we did not handle
 				// the line; zsh will then emit its usual "command not found".

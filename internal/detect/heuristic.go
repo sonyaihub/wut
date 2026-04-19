@@ -36,11 +36,15 @@ type Result struct {
 	Line   string
 }
 
-// Options tweaks Parse. Currently just user-defined passthrough tokens.
+// Options tweaks Parse / Classify with user-configured token sets.
 type Options struct {
-	// Passthrough first tokens — never route even if NL-shaped.
-	// Matched case-sensitively against the first whitespace-delimited token.
+	// Passthrough first tokens — never route even if NL-shaped. Matched
+	// case-sensitively against the first whitespace-delimited token.
 	Passthrough []string
+	// ExtraStopwords extends the built-in stopword set (spec §6). Case-insensitive.
+	ExtraStopwords []string
+	// ExtraInterrogatives extends the built-in interrogative set. Case-insensitive.
+	ExtraInterrogatives []string
 }
 
 // Parse runs prefix handling, user-configured passthrough, then Classify.
@@ -69,17 +73,22 @@ func Parse(line string, opts ...Options) Result {
 		return Result{Class: PassThrough, Line: line}
 	}
 
+	var o Options
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+
 	// User-configured passthrough first-tokens (spec §7 behavior.passthrough).
-	if len(opts) > 0 && len(opts[0].Passthrough) > 0 {
+	if len(o.Passthrough) > 0 {
 		first := firstToken(line)
-		for _, tok := range opts[0].Passthrough {
+		for _, tok := range o.Passthrough {
 			if tok == first {
 				return Result{Class: PassThrough, Line: line}
 			}
 		}
 	}
 
-	return Result{Class: Classify(line), Line: line}
+	return Result{Class: Classify(line, o), Line: line}
 }
 
 func firstToken(line string) string {
@@ -91,20 +100,26 @@ func firstToken(line string) string {
 	return line
 }
 
+// stopwords is the built-in fixed set from spec §6. Users extend this via
+// Options.ExtraStopwords, not by modifying the map.
 var stopwords = map[string]struct{}{
 	"the": {}, "a": {}, "is": {}, "how": {}, "what": {}, "why": {},
 	"can": {}, "i": {}, "my": {}, "to": {}, "do": {}, "does": {},
 	"should": {},
 }
 
+// interrogatives is the built-in fixed set. Includes apostrophe-dropped
+// contractions (`whats`, `hows`…) because users often type them without the
+// apostrophe and none of them collide with real binaries on macOS/Linux.
 var interrogatives = map[string]struct{}{
 	"how": {}, "what": {}, "why": {}, "explain": {}, "write": {},
 	"make": {}, "fix": {}, "help": {},
+	"whats": {}, "hows": {}, "whos": {}, "wheres": {}, "whens": {},
 }
 
 // Classify returns Route when line looks like natural language the user meant
 // for their AI harness, or PassThrough otherwise. See spec §6.
-func Classify(line string) Classification {
+func Classify(line string, opts ...Options) Classification {
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return PassThrough
@@ -131,11 +146,16 @@ func Classify(line string) Classification {
 		return PassThrough
 	}
 
+	var o Options
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+
 	// Soft signals — need at least two.
 	signals := 0
 	lower := strings.ToLower(line)
 	lowerTokens := tokenizeWords(lower)
-	if hasStopword(lowerTokens) {
+	if hasWord(lowerTokens, stopwords, o.ExtraStopwords) {
 		signals++
 	}
 	if strings.ContainsRune(line, '?') {
@@ -147,7 +167,10 @@ func Classify(line string) Classification {
 	if len(tokens) >= 6 {
 		signals++
 	}
-	if _, ok := interrogatives[strings.ToLower(tokens[0])]; ok {
+	first := strings.ToLower(tokens[0])
+	if _, ok := interrogatives[first]; ok {
+		signals++
+	} else if matchesExtra(first, o.ExtraInterrogatives) {
 		signals++
 	}
 
@@ -199,9 +222,23 @@ func tokenizeWords(s string) []string {
 	})
 }
 
-func hasStopword(tokens []string) bool {
+// hasWord reports whether any token matches the built-in set or the
+// user-supplied extras (case-insensitive).
+func hasWord(tokens []string, builtin map[string]struct{}, extras []string) bool {
 	for _, t := range tokens {
-		if _, ok := stopwords[t]; ok {
+		if _, ok := builtin[t]; ok {
+			return true
+		}
+		if matchesExtra(t, extras) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesExtra(token string, extras []string) bool {
+	for _, e := range extras {
+		if strings.EqualFold(token, e) {
 			return true
 		}
 	}

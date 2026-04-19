@@ -88,7 +88,15 @@ type Config struct {
 	ActiveHarness string             `toml:"active_harness"`
 	DefaultMode   Mode               `toml:"default_mode"`
 	Behavior      Behavior           `toml:"behavior"`
+	Detection     Detection          `toml:"detection"`
 	Harness       map[string]Harness `toml:"harness"`
+}
+
+// Detection extends the built-in classifier token sets. Both fields are
+// additive — the built-in sets in internal/detect are never removed.
+type Detection struct {
+	ExtraStopwords      []string `toml:"extra_stopwords"`
+	ExtraInterrogatives []string `toml:"extra_interrogatives"`
 }
 
 // DefaultPath returns the standard config file path, honoring XDG_CONFIG_HOME.
