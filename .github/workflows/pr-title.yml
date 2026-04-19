@@ -1,0 +1,42 @@
+name: pr-title
+
+# Validate that every PR title follows the Conventional Commits spec.
+# Squash-merging uses the PR title as the main-branch commit message, which
+# the tag workflow then parses to pick a semver bump. Enforcing the format
+# here is what makes release automation deterministic.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Allowed commit types. Any title not starting with one of these
+          # (optionally followed by a scope and/or `!`) fails the check.
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            chore
+            ci
+            build
+            style
+            revert
+          requireScope: false
+          # Subject must start lowercase — matches the existing commit log
+          # (feat: ..., refactor: ..., etc.).
+          subjectPattern: ^[a-z].*$
+          subjectPatternError: |
+            The subject "{subject}" must start with a lowercase letter.

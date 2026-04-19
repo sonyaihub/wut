@@ -1,0 +1,44 @@
+name: tag
+
+# Auto-bump a semver tag when commits land on main.
+#
+# Bump rules (parsed from the squash-merge commit message, which mirrors the
+# PR title thanks to .github/workflows/pr-title.yml):
+#   feat:             -> minor
+#   fix: / perf:      -> patch
+#   feat!: / BREAKING CHANGE: -> major
+#   anything else (refactor, docs, chore, ci, ...) -> default_bump (patch)
+#
+# Pushing the tag triggers .github/workflows/release.yml, which runs
+# goreleaser to build binaries and cut a GitHub release.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write   # create + push tags
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    # Don't recursively tag tag-bot commits or skip-ci commits.
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # action needs full history to find the prior tag
+
+      - id: bump
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          # Must be a PAT (or GitHub App token) — NOT the default
+          # secrets.GITHUB_TOKEN. GitHub deliberately suppresses downstream
+          # workflow runs for pushes made with GITHUB_TOKEN, which would mean
+          # this tag push never triggers release.yml. The PAT needs `repo`
+          # scope (or `contents: write` fine-grained) and must be stored as
+          # the PERSONAL_ACCESS_TOKEN repository secret.
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          default_bump: patch
+          release_branches: main
+          tag_prefix: v
