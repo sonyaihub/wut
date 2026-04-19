@@ -35,6 +35,7 @@ func runCLI(t *testing.T, args ...string) (string, error) {
 	root.AddCommand(NewConfigCmd())
 	root.AddCommand(NewSetupCmd())
 	root.AddCommand(NewKeywordsCmd())
+	root.AddCommand(NewCompletionCmd())
 
 	// Pipe os.Stdout into a buffer for the duration of this call.
 	r, w, _ := os.Pipe()
@@ -330,5 +331,42 @@ func TestSetupNonInteractive(t *testing.T) {
 	}
 	if !strings.Contains(got, `default_mode = "headless"`) {
 		t.Errorf("default_mode not set:\n%s", got)
+	}
+}
+
+func TestCompletionZshContainsFunction(t *testing.T) {
+	out, err := runCLI(t, "completion", "zsh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "_wut") {
+		t.Errorf("zsh completion missing _wut function:\n%s", out)
+	}
+}
+
+func TestCompletionBashContainsFunction(t *testing.T) {
+	out, err := runCLI(t, "completion", "bash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "_wut_") {
+		t.Errorf("bash completion missing _wut_ prefix:\n%s", out)
+	}
+}
+
+func TestCompletionFishContainsDirective(t *testing.T) {
+	out, err := runCLI(t, "completion", "fish")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "complete -c wut") {
+		t.Errorf("fish completion missing 'complete -c wut':\n%s", out)
+	}
+}
+
+func TestCompletionUnknownShellErrors(t *testing.T) {
+	_, err := runCLI(t, "completion", "tcsh")
+	if err == nil {
+		t.Fatal("completion tcsh should error")
 	}
 }
