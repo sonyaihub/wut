@@ -1,0 +1,7 @@
+/terminal-helper
+/dist/
+*.swp
+*.swo
+.DS_Store
+.idea/
+.vscode/
