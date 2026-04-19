@@ -60,18 +60,20 @@ changelog:
       - Merge pull request
       - Merge branch
 
-# Homebrew tap publishing — flip `skip_upload` to false and create the tap
-# repo at github.com/sonyaihub/homebrew-tap before the first real release.
+# Homebrew tap publishing.
+# Requires the tap repo github.com/sonyaihub/homebrew-tap to exist and a PAT
+# with `repo` scope exposed as HOMEBREW_TAP_GITHUB_TOKEN (the default
+# GITHUB_TOKEN can't push to a different repository).
 brews:
   - name: wut
     repository:
       owner: sonyaihub
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
     homepage: https://github.com/sonyaihub/wut
     description: Route accidental natural-language shell input to your AI harness
     license: MIT
-    skip_upload: "true"
     install: |
       bin.install "wut"
     test: |
