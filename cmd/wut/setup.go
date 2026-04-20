@@ -83,8 +83,12 @@ func NewSetupCmd() *cobra.Command {
 			doCompletion := installCompletionFlag
 			if !nonInteractive && !cmd.Flags().Changed("install-completion") {
 				ok, confirmErr := ui.Confirm("install shell completion?")
-				if confirmErr == nil {
+				switch {
+				case confirmErr == nil:
 					doCompletion = ok
+				case errors.Is(confirmErr, ui.ErrCancelled):
+					doCompletion = false
+					// default: no TTY or other prompt failure — preserve installCompletionFlag (false).
 				}
 			}
 			if doCompletion {
