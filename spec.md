@@ -2,14 +2,14 @@
 
 ## 1. Problem
 
-A user opens a new terminal and, out of habit, starts typing natural language at the prompt (e.g. `how do I rebase this branch onto main`) as if chatting with an AI harness. The shell responds with `command not found`, which is noisy and wastes the intent. We want to catch these moments and hand the typed text off to the user's configured AI harness (Claude Code, aider, codex, custom CLI, etc.) as a prompt.
+A user opens a new terminal and, out of habit, starts typing natural language at the prompt (e.g. `how do I rebase this branch onto main`) as if chatting with an AI harness. The shell responds with `command not found`, which is noisy and wastes the intent. We want to catch these moments and hand the typed text off to the user's configured AI harness (Claude Code, codex, opencode, custom CLI, etc.) as a prompt.
 
 ## 2. Goals
 
 - Detect natural-language input at an interactive shell prompt with near-zero false positives on real commands.
 - Route the detected text to a user-configured harness with the text as its initial prompt.
 - Support both **interactive** mode (hand the tty to the harness) and **headless** mode (one-shot, print answer inline, shell stays in control) per harness.
-- Ship presets for common harnesses (Claude Code, aider, codex, etc.) so 90% of users never write invocation flags by hand.
+- Ship presets for common harnesses (Claude Code, codex, opencode, etc.) so 90% of users never write invocation flags by hand.
 - Be install-once, opt-in, and trivially removable.
 - Zero measurable latency cost on normal shell usage (no wrapper around every command).
 
@@ -17,7 +17,7 @@ A user opens a new terminal and, out of habit, starts typing natural language at
 
 - Not a shell replacement, REPL, or multiplexer.
 - No inline autocomplete, no "did you mean" suggestions for real commands.
-- No harness management (installing Claude Code, aider, etc. is the user's job).
+- No harness management (installing Claude Code, opencode, etc. is the user's job).
 - No history or session persistence beyond what the harness itself does.
 - Bash/fish support — zsh only for v1.
 
@@ -35,8 +35,8 @@ wut setup                    # guided: pick harness, pick default mode
 ```
 ? Which harness do you use? (↑/↓)
   > claude          (Claude Code — detected on PATH)
-    aider
     codex
+    opencode
     cursor-agent
     custom...
 ? Default mode when natural language is detected?
@@ -184,11 +184,15 @@ headless = {
   stream  = true,
 }
 
-[harness.aider]
-interactive = { command = "aider", args = ["--message", "{prompt}"] }
-# aider has no true one-shot mode — leaving headless unset means
-# "headless requests auto-fall-back to interactive for this harness".
+[harness.opencode]
+interactive = { command = "opencode", args = ["{prompt}"] }
+headless    = { command = "opencode", args = ["run", "{prompt}"], stream = true }
+
+# Example of an interactive-only custom harness: leaving `headless` unset
+# means "headless requests auto-fall-back to interactive for this harness".
 # Users can override this with behavior.headless_fallback = "error".
+[harness.interactive-only-example]
+interactive = { command = "my-tui-agent", args = ["--message", "{prompt}"] }
 
 [harness.codex]
 interactive = { command = "codex", args = ["{prompt}"] }
@@ -328,7 +332,7 @@ The binary handles all logic; the snippet is intentionally dumb so users can eye
 
 ## 13. Open questions
 
-1. **Multi-harness profiles.** Should a user be able to define multiple harnesses and pick based on prefix (`@c ...` → claude, `@a ...` → aider)? Probably yes in v2.
+1. **Multi-harness profiles.** Should a user be able to define multiple harnesses and pick based on prefix (`@c ...` → claude, `@o ...` → opencode)? Probably yes in v2.
 1a. **Per-prompt mode prefixes.** Even with a default mode, users will want a quick override. Proposal: `??` prefix forces headless, `?!` forces interactive. Cheap to add and composes with the existing `?` / `!` escape hatches. Defer unless it comes up in dogfooding.
 1b. **Mode promotion mid-flight.** Headless answer is unsatisfying and the user wants to "continue the conversation." Should there be a hotkey at the end of a headless render to re-launch the harness interactively with the same prompt as seed? Nice-to-have; out of scope for v1.
 2. **Paste detection.** If a user pastes a long multi-line block, we currently classify each line. Should we debounce / buffer? Out of scope for v1 until we see real misses.
